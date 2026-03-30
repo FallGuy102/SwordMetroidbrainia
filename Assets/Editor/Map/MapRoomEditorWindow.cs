@@ -13,15 +13,6 @@ namespace SwordMetroidbrainia.Editor.Map
         private const float WorldPreviewPadding = 16f;
         private const int WorldOverviewRoomPadding = 2;
 
-        private static readonly Color GridBackgroundColor = new(0.16f, 0.2f, 0.21f, 1f);
-        private static readonly Color GridLineColor = new(0.86f, 0.91f, 0.92f, 0.18f);
-        private static readonly Color BorderLineColor = new(1f, 1f, 1f, 0.7f);
-        private static readonly Color MajorGridLineColor = new(0.92f, 0.97f, 0.98f, 0.09f);
-        private static readonly Color WallColor = new(0.36f, 0.37f, 0.46f, 1f);
-        private static readonly Color GroundColor = new(0.7f, 0.46f, 0.22f, 1f);
-        private static readonly Color OneWayPlatformColor = new(0.95f, 0.76f, 0.28f, 1f);
-        private static readonly Color HoverColor = new(1f, 1f, 1f, 0.1f);
-
         private enum WorldRegionTool
         {
             Select,
@@ -179,7 +170,7 @@ namespace SwordMetroidbrainia.Editor.Map
             var contentRect = new Rect(gridRect.x + GridPadding, gridRect.y + GridPadding, gridWidth, gridHeight);
 
             EditorGUI.DrawRect(gridRect, new Color(0.1f, 0.12f, 0.12f, 1f));
-            EditorGUI.DrawRect(contentRect, GridBackgroundColor);
+            EditorGUI.DrawRect(contentRect, MapRoomEditorTheme.GridBackgroundColor);
 
             DrawGridCells(contentRect, cellSize);
             DrawGridLines(contentRect, cellSize);
@@ -199,21 +190,21 @@ namespace SwordMetroidbrainia.Editor.Map
                         continue;
                     }
 
-                    EditorGUI.DrawRect(GetGridCellRect(contentRect, x, displayRow, cellSize), GetCellColor(type));
+                    EditorGUI.DrawRect(GetGridCellRect(contentRect, x, displayRow, cellSize), MapRoomEditorTheme.GetCellColor(type));
                 }
             }
 
             if (TryGetGridCell(contentRect, Event.current.mousePosition, cellSize, out var hovered))
             {
                 var displayRow = MapRoomDefinition.RoomHeight - 1 - hovered.y;
-                EditorGUI.DrawRect(GetGridCellRect(contentRect, hovered.x, displayRow, cellSize), HoverColor);
+                EditorGUI.DrawRect(GetGridCellRect(contentRect, hovered.x, displayRow, cellSize), MapRoomEditorTheme.HoverColor);
             }
         }
 
         private static void DrawGridLines(Rect contentRect, float cellSize)
         {
             Handles.BeginGUI();
-            Handles.color = GridLineColor;
+            Handles.color = MapRoomEditorTheme.GridLineColor;
 
             for (var x = 0; x <= MapRoomDefinition.RoomWidth; x++)
             {
@@ -227,7 +218,7 @@ namespace SwordMetroidbrainia.Editor.Map
                 Handles.DrawLine(new Vector3(contentRect.x, lineY), new Vector3(contentRect.xMax, lineY));
             }
 
-            Handles.color = MajorGridLineColor;
+            Handles.color = MapRoomEditorTheme.MajorGridLineColor;
             for (var x = 0; x <= MapRoomDefinition.RoomWidth; x += 5)
             {
                 var lineX = contentRect.x + x * cellSize;
@@ -240,7 +231,7 @@ namespace SwordMetroidbrainia.Editor.Map
                 Handles.DrawAAPolyLine(1.6f, new Vector3(contentRect.x, lineY), new Vector3(contentRect.xMax, lineY));
             }
 
-            Handles.color = BorderLineColor;
+            Handles.color = MapRoomEditorTheme.BorderLineColor;
             Handles.DrawAAPolyLine(
                 2f,
                 new Vector3(contentRect.x, contentRect.y),
@@ -335,13 +326,13 @@ namespace SwordMetroidbrainia.Editor.Map
 
             var map = _mapRoot.Map;
             _selectedPlacementIndex = FindSelectedPlacementIndex(map, _room, _selectedPlacementIndex);
-            if (!TryGetWorldPreviewBounds(map, out var minGrid, out var maxGrid))
+            if (!MapRoomEditorWorldOverviewUtility.TryGetWorldPreviewBounds(map, WorldOverviewRoomPadding, out var minGrid, out var maxGrid))
             {
                 return;
             }
 
-            var worldPreviewCellSize = GetWorldPreviewCellSize(overviewRect);
-            var contentRect = GetWorldContentRect(overviewRect, minGrid, maxGrid, worldPreviewCellSize);
+            var worldPreviewCellSize = MapRoomEditorWorldOverviewUtility.GetWorldPreviewCellSize(overviewRect);
+            var contentRect = MapRoomEditorWorldOverviewUtility.GetWorldContentRect(overviewRect, minGrid, maxGrid, worldPreviewCellSize);
 
             InitializeWorldPanIfNeeded(overviewRect, contentRect, minGrid, worldPreviewCellSize);
             HandleWorldOverviewInput(overviewRect);
@@ -382,7 +373,7 @@ namespace SwordMetroidbrainia.Editor.Map
                     continue;
                 }
 
-                var localRoomRect = GetWorldRoomRect(placement.gridPosition, minGrid, localContentRect, worldPreviewCellSize);
+                var localRoomRect = MapRoomEditorWorldOverviewUtility.GetWorldRoomRect(placement.gridPosition, minGrid, localContentRect, worldPreviewCellSize);
                 DrawRoomMiniPreview(localRoomRect, placement.room, worldPreviewCellSize);
 
                 var outlineColor = i == _selectedPlacementIndex
@@ -393,7 +384,7 @@ namespace SwordMetroidbrainia.Editor.Map
 
             if (_hasSelectedRegion)
             {
-                var selectedRegionRect = GetWorldRoomRect(_selectedRegionGridPosition, minGrid, localContentRect, worldPreviewCellSize);
+                var selectedRegionRect = MapRoomEditorWorldOverviewUtility.GetWorldRoomRect(_selectedRegionGridPosition, minGrid, localContentRect, worldPreviewCellSize);
                 DrawOutline(selectedRegionRect, new Color(0.5f, 0.85f, 1f, 1f));
             }
 
@@ -445,7 +436,7 @@ namespace SwordMetroidbrainia.Editor.Map
                 return;
             }
 
-            if (!TryGetWorldRegionGridPosition(absoluteContentRect, minGrid, worldPreviewCellSize, currentEvent.mousePosition, out var roomGridPosition))
+            if (!MapRoomEditorWorldOverviewUtility.TryGetWorldRegionGridPosition(absoluteContentRect, minGrid, worldPreviewCellSize, currentEvent.mousePosition, out var roomGridPosition))
             {
                 return;
             }
@@ -643,7 +634,7 @@ namespace SwordMetroidbrainia.Editor.Map
             if (_mapRoot != null && _mapRoot.Map != null && _mapRoot.Map.IsValidRoomIndex(_selectedPlacementIndex))
             {
                 var placement = _mapRoot.Map.GetRoom(_selectedPlacementIndex);
-                var selectedRoomRect = GetWorldRoomRect(placement.gridPosition, minGrid, contentRect, worldPreviewCellSize);
+                var selectedRoomRect = MapRoomEditorWorldOverviewUtility.GetWorldRoomRect(placement.gridPosition, minGrid, contentRect, worldPreviewCellSize);
                 _worldPan = overviewRect.center - selectedRoomRect.center;
             }
             else
@@ -654,56 +645,9 @@ namespace SwordMetroidbrainia.Editor.Map
             _worldPanInitialized = true;
         }
 
-        private static Rect GetWorldContentRect(Rect overviewRect, Vector2Int minGrid, Vector2Int maxGrid, float worldPreviewCellSize)
-        {
-            var contentWidth = (maxGrid.x - minGrid.x + 1) * MapRoomDefinition.RoomWidth * worldPreviewCellSize;
-            var contentHeight = (maxGrid.y - minGrid.y + 1) * MapRoomDefinition.RoomHeight * worldPreviewCellSize;
-            return new Rect(
-                overviewRect.x + (overviewRect.width - contentWidth) * 0.5f,
-                overviewRect.y + (overviewRect.height - contentHeight) * 0.5f,
-                contentWidth,
-                contentHeight);
-        }
-
-        private static Rect GetWorldRoomRect(Vector2Int roomGridPosition, Vector2Int minGrid, Rect contentRect, float worldPreviewCellSize)
-        {
-            var offsetX = (roomGridPosition.x - minGrid.x) * MapRoomDefinition.RoomWidth * worldPreviewCellSize;
-            var offsetY = (roomGridPosition.y - minGrid.y) * MapRoomDefinition.RoomHeight * worldPreviewCellSize;
-            var displayY = contentRect.yMax - offsetY - MapRoomDefinition.RoomHeight * worldPreviewCellSize;
-            return new Rect(
-                contentRect.x + offsetX,
-                displayY,
-                MapRoomDefinition.RoomWidth * worldPreviewCellSize,
-                MapRoomDefinition.RoomHeight * worldPreviewCellSize);
-        }
-
-        private static bool TryGetWorldRegionGridPosition(Rect contentRect, Vector2Int minGrid, float worldPreviewCellSize, Vector2 mousePosition, out Vector2Int roomGridPosition)
-        {
-            roomGridPosition = default;
-            var roomWidth = MapRoomDefinition.RoomWidth * worldPreviewCellSize;
-            var roomHeight = MapRoomDefinition.RoomHeight * worldPreviewCellSize;
-            if (roomWidth <= 0f || roomHeight <= 0f)
-            {
-                return false;
-            }
-
-            if (!contentRect.Contains(mousePosition))
-            {
-                return false;
-            }
-
-            var localX = mousePosition.x - contentRect.x;
-            var localYFromBottom = contentRect.yMax - mousePosition.y;
-
-            var gridX = Mathf.FloorToInt(localX / roomWidth) + minGrid.x;
-            var gridY = Mathf.FloorToInt(localYFromBottom / roomHeight) + minGrid.y;
-            roomGridPosition = new Vector2Int(gridX, gridY);
-            return true;
-        }
-
         private static void DrawRoomMiniPreview(Rect rect, MapRoomDefinition room, float worldPreviewCellSize)
         {
-            EditorGUI.DrawRect(rect, GridBackgroundColor);
+            EditorGUI.DrawRect(rect, MapRoomEditorTheme.GridBackgroundColor);
 
             for (var displayRow = 0; displayRow < MapRoomDefinition.RoomHeight; displayRow++)
             {
@@ -721,39 +665,9 @@ namespace SwordMetroidbrainia.Editor.Map
                         rect.y + displayRow * worldPreviewCellSize,
                         worldPreviewCellSize,
                         worldPreviewCellSize);
-                    EditorGUI.DrawRect(cellRect, GetCellColor(type));
+                    EditorGUI.DrawRect(cellRect, MapRoomEditorTheme.GetCellColor(type));
                 }
             }
-        }
-
-        private static bool TryGetWorldPreviewBounds(MapDefinition map, out Vector2Int minGrid, out Vector2Int maxGrid)
-        {
-            minGrid = default;
-            maxGrid = default;
-            if (map.Rooms.Count == 0)
-            {
-                return false;
-            }
-
-            minGrid = map.GetRoom(0).gridPosition;
-            maxGrid = minGrid;
-            for (var i = 1; i < map.Rooms.Count; i++)
-            {
-                var grid = map.GetRoom(i).gridPosition;
-                minGrid = Vector2Int.Min(minGrid, grid);
-                maxGrid = Vector2Int.Max(maxGrid, grid);
-            }
-
-            minGrid -= Vector2Int.one * WorldOverviewRoomPadding;
-            maxGrid += Vector2Int.one * WorldOverviewRoomPadding;
-            return true;
-        }
-
-        private static float GetWorldPreviewCellSize(Rect overviewRect)
-        {
-            var cellSizeFromWidth = overviewRect.width / (MapRoomDefinition.RoomWidth * 4.4f);
-            var cellSizeFromHeight = overviewRect.height / (MapRoomDefinition.RoomHeight * 3.4f);
-            return Mathf.Clamp(Mathf.Min(cellSizeFromWidth, cellSizeFromHeight), 3f, 6f);
         }
 
         private static int FindSelectedPlacementIndex(MapDefinition map, MapRoomDefinition room, int fallbackIndex)
@@ -797,17 +711,6 @@ namespace SwordMetroidbrainia.Editor.Map
 
             cell = new Vector2Int(localX, roomY);
             return true;
-        }
-
-        private static Color GetCellColor(RoomCellType type)
-        {
-            return type switch
-            {
-                RoomCellType.Wall => WallColor,
-                RoomCellType.Ground => GroundColor,
-                RoomCellType.OneWayPlatform => OneWayPlatformColor,
-                _ => Color.clear
-            };
         }
 
         private static void DrawOutline(Rect rect, Color color)

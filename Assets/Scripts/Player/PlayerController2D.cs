@@ -9,6 +9,25 @@ namespace SwordMetroidbrainia
     [RequireComponent(typeof(PlayerInputReader))]
     public sealed class PlayerController2D : MonoBehaviour
     {
+        public enum PullEndReason
+        {
+            None,
+            ReachedTarget,
+            Blocked,
+            Canceled
+        }
+
+        private struct PullState
+        {
+            public bool IsActive;
+            public Vector2 Target;
+            public float Acceleration;
+            public float MaxSpeed;
+            public float StopDistance;
+            public float CurrentSpeed;
+            public Vector2 LastDirection;
+        }
+
         private const float SkinWidth = 0.01f;
         private const int CastBufferSize = 8;
         private const int OverlapBufferSize = 16;
@@ -47,12 +66,19 @@ namespace SwordMetroidbrainia
                 curve = null,
                 exitSpeed = 4f
             },
-            vertical = new RecoilProfile
+            verticalUpward = new RecoilProfile
             {
                 distance = 1f,
-                duration = 0.22f,
+                duration = 0.16f,
                 curve = null,
-                exitSpeed = 0f
+                exitSpeed = 4f
+            },
+            verticalDownward = new RecoilProfile
+            {
+                distance = 1f,
+                duration = 0.16f,
+                curve = null,
+                exitSpeed = 4f
             },
             allowHorizontalMoveDuringVerticalRecoil = true,
             ignoreGravityDuringHorizontalRecoil = true,
@@ -62,14 +88,19 @@ namespace SwordMetroidbrainia
         [Header("One Way Platform")]
         [SerializeField, Min(0f)] private float oneWayPassThroughDuration = 0.08f;
 
+        [Header("Pull Motion")]
+        [SerializeField, Min(0f)] private float horizontalMomentumDecay = 16f;
+
         private readonly RaycastHit2D[] _castBuffer = new RaycastHit2D[CastBufferSize];
         private readonly Collider2D[] _overlapBuffer = new Collider2D[OverlapBufferSize];
 
         private Collider2D _collider2D;
         private Rigidbody2D _rigidbody2D;
         private PlayerInputReader _inputReader;
+        private PlayerRespawnController _respawnController;
         private ContactFilter2D _solidFilter;
         private ContactFilter2D _overlapFilter;
+        private ContactFilter2D _triggerOverlapFilter;
         private float _moveInput;
         private float _verticalVelocity;
         private bool _isGrounded;
@@ -80,17 +111,22 @@ namespace SwordMetroidbrainia
         private float _minimumMoveRemaining;
         private float _minimumMoveDirection;
         private float _oneWayPassThroughTimer;
+        private float _horizontalMomentumVelocity;
+        private PullState _pullState;
+        private PullEndReason _lastPullEndReason;
 
         public bool IsGrounded => _isGrounded;
         public int FacingDirection => _facingDirection;
         public Vector2 CurrentPosition => _currentPosition;
         public Collider2D BodyCollider => _collider2D;
+        public bool IsPulling => _pullState.IsActive;
 
         private void Awake()
         {
             _collider2D = GetComponent<Collider2D>();
             _rigidbody2D = GetComponent<Rigidbody2D>();
             _inputReader = GetComponent<PlayerInputReader>();
+            _respawnController = GetComponent<PlayerRespawnController>();
             ApplyColliderShape();
             _rigidbody2D.bodyType = RigidbodyType2D.Kinematic;
             _rigidbody2D.simulated = true;
@@ -105,6 +141,11 @@ namespace SwordMetroidbrainia
             };
 
             _overlapFilter = _solidFilter;
+            _triggerOverlapFilter = new ContactFilter2D
+            {
+                useLayerMask = false,
+                useTriggers = true
+            };
             _currentPosition = _rigidbody2D.position;
             EnsureDefaultCurves();
         }
@@ -150,10 +191,21 @@ namespace SwordMetroidbrainia
             _currentPosition = _rigidbody2D.position;
             SyncBodyPosition();
             ResolveOverlaps();
+            CheckSpecialOverlaps();
             UpdateGroundedState();
 
             var deltaTime = Time.fixedDeltaTime;
             var motion = Vector2.zero;
+
+            if (_pullState.IsActive)
+            {
+                ProcessPullMotion(deltaTime);
+                SyncBodyPosition();
+                _rigidbody2D.MovePosition(_currentPosition);
+                CheckSpecialOverlaps();
+                UpdateGroundedState();
+                return;
+            }
 
             var horizontalMotion = GetHorizontalMoveDelta(deltaTime);
             if (horizontalMotion != 0f)
@@ -166,6 +218,7 @@ namespace SwordMetroidbrainia
                 motion += GetRecoilDelta(deltaTime);
             }
 
+            ApplyHorizontalMomentum(deltaTime, ref motion);
             ApplyGravity(deltaTime, ref motion);
             MoveCharacter(motion);
             SnapToGround();
@@ -173,11 +226,13 @@ namespace SwordMetroidbrainia
             ResolveOverlaps();
             SyncBodyPosition();
             _rigidbody2D.MovePosition(_currentPosition);
+            CheckSpecialOverlaps();
             UpdateGroundedState();
         }
 
         public void ApplySwordRecoil(Vector2 direction)
         {
+            ForceStopPull(false, PullEndReason.Canceled);
             _recoilState.Begin(direction);
             _verticalVelocity = 0f;
 
@@ -186,6 +241,60 @@ namespace SwordMetroidbrainia
                 _oneWayPassThroughTimer = oneWayPassThroughDuration;
                 DropThroughOneWayPlatformIfStanding();
             }
+        }
+
+        public void BeginPull(Vector2 target, float acceleration, float maxSpeed, float stopDistance)
+        {
+            _pullState = new PullState
+            {
+                IsActive = true,
+                Target = target,
+                Acceleration = Mathf.Max(0f, acceleration),
+                MaxSpeed = Mathf.Max(0f, maxSpeed),
+                StopDistance = Mathf.Max(0.01f, stopDistance),
+                CurrentSpeed = 0f,
+                LastDirection = (target - _currentPosition).sqrMagnitude > 0.0001f
+                    ? (target - _currentPosition).normalized
+                    : Vector2.zero
+            };
+
+            _lastPullEndReason = PullEndReason.None;
+            _verticalVelocity = 0f;
+            _horizontalMomentumVelocity = 0f;
+            _recoilState.Stop();
+            _minimumMoveRemaining = 0f;
+        }
+
+        public void CancelPull(bool preserveVelocity)
+        {
+            ForceStopPull(preserveVelocity, PullEndReason.Canceled);
+        }
+
+        public bool ConsumePullEndReason(out PullEndReason reason)
+        {
+            reason = _lastPullEndReason;
+            if (reason == PullEndReason.None)
+            {
+                return false;
+            }
+
+            _lastPullEndReason = PullEndReason.None;
+            return true;
+        }
+
+        public void TeleportTo(Vector2 worldPosition)
+        {
+            _pullState = default;
+            _lastPullEndReason = PullEndReason.None;
+            _recoilState.Stop();
+            _verticalVelocity = 0f;
+            _horizontalMomentumVelocity = 0f;
+            _minimumMoveRemaining = 0f;
+            _oneWayPassThroughTimer = 0f;
+            _currentPosition = worldPosition;
+            SyncBodyPosition();
+            _rigidbody2D.MovePosition(_currentPosition);
+            UpdateGroundedState();
         }
 
         private float GetHorizontalMoveDelta(float deltaTime)
@@ -269,21 +378,90 @@ namespace SwordMetroidbrainia
             motion.y += _verticalVelocity * deltaTime;
         }
 
+        private void ApplyHorizontalMomentum(float deltaTime, ref Vector2 motion)
+        {
+            if (Mathf.Abs(_horizontalMomentumVelocity) <= 0.001f)
+            {
+                _horizontalMomentumVelocity = 0f;
+                return;
+            }
+
+            motion.x += _horizontalMomentumVelocity * deltaTime;
+            _horizontalMomentumVelocity = Mathf.MoveTowards(_horizontalMomentumVelocity, 0f, horizontalMomentumDecay * deltaTime);
+        }
+
+        private void ProcessPullMotion(float deltaTime)
+        {
+            var toTarget = _pullState.Target - _currentPosition;
+            var distanceToTarget = toTarget.magnitude;
+            if (distanceToTarget <= _pullState.StopDistance)
+            {
+                ForceStopPull(false, PullEndReason.ReachedTarget);
+                return;
+            }
+
+            var direction = toTarget / Mathf.Max(distanceToTarget, 0.0001f);
+            _pullState.LastDirection = direction;
+            _pullState.CurrentSpeed = Mathf.Min(_pullState.MaxSpeed, _pullState.CurrentSpeed + _pullState.Acceleration * deltaTime);
+            var motion = direction * Mathf.Min(distanceToTarget, _pullState.CurrentSpeed * deltaTime);
+
+            MoveCharacter(motion, out var blockedX, out var blockedY);
+            if (blockedX || blockedY)
+            {
+                ForceStopPull(false, PullEndReason.Blocked);
+                return;
+            }
+
+            SnapToGround();
+            ResolveOverlaps();
+        }
+
+        private void ForceStopPull(bool preserveVelocity, PullEndReason reason)
+        {
+            if (!_pullState.IsActive)
+            {
+                return;
+            }
+
+            if (preserveVelocity)
+            {
+                _horizontalMomentumVelocity = _pullState.LastDirection.x * _pullState.CurrentSpeed;
+                _verticalVelocity = _pullState.LastDirection.y * _pullState.CurrentSpeed;
+            }
+            else
+            {
+                _horizontalMomentumVelocity = 0f;
+                _verticalVelocity = 0f;
+            }
+
+            _pullState = default;
+            _lastPullEndReason = reason;
+        }
+
         private void MoveCharacter(Vector2 motion)
         {
+            MoveCharacter(motion, out _, out _);
+        }
+
+        private void MoveCharacter(Vector2 motion, out bool blockedX, out bool blockedY)
+        {
+            blockedX = false;
+            blockedY = false;
+
             if (motion.x != 0f)
             {
-                MoveAlongAxis(Vector2.right, motion.x);
+                MoveAlongAxis(Vector2.right, motion.x, out blockedX);
             }
 
             if (motion.y != 0f)
             {
-                MoveAlongAxis(Vector2.up, motion.y);
+                MoveAlongAxis(Vector2.up, motion.y, out blockedY);
             }
         }
 
-        private void MoveAlongAxis(Vector2 axis, float amount)
+        private void MoveAlongAxis(Vector2 axis, float amount, out bool blocked)
         {
+            blocked = false;
             var distance = Mathf.Abs(amount);
             if (distance <= 0f)
             {
@@ -301,6 +479,13 @@ namespace SwordMetroidbrainia
                     continue;
                 }
 
+                if (_castBuffer[i].collider.TryGetComponent<DeathCellMarker>(out _))
+                {
+                    KillPlayer();
+                    blocked = true;
+                    return;
+                }
+
                 var hitDistance = _castBuffer[i].distance - SkinWidth;
                 if (hitDistance < allowedDistance)
                 {
@@ -312,21 +497,24 @@ namespace SwordMetroidbrainia
             _currentPosition += direction * allowedDistance;
             SyncBodyPosition();
 
-            if (allowedDistance + SkinWidth < distance && axis == Vector2.up)
+            if (allowedDistance + SkinWidth < distance)
             {
-                _verticalVelocity = 0f;
-                if (amount > 0f)
+                blocked = true;
+                if (axis == Vector2.up)
+                {
+                    _verticalVelocity = 0f;
+                    if (amount > 0f)
+                    {
+                        _recoilState.Stop();
+                    }
+                }
+
+                if (axis == Vector2.right
+                    && _recoilState.IsActive
+                    && Mathf.Abs(_recoilState.Direction.x) > 0.01f)
                 {
                     _recoilState.Stop();
                 }
-            }
-
-            if (allowedDistance + SkinWidth < distance
-                && axis == Vector2.right
-                && _recoilState.IsActive
-                && Mathf.Abs(_recoilState.Direction.x) > 0.01f)
-            {
-                _recoilState.Stop();
             }
         }
 
@@ -411,6 +599,12 @@ namespace SwordMetroidbrainia
                     continue;
                 }
 
+                if (other.TryGetComponent<DeathCellMarker>(out _))
+                {
+                    KillPlayer();
+                    return;
+                }
+
                 if (other.TryGetComponent<OneWayPlatformMarker>(out _))
                 {
                     continue;
@@ -428,6 +622,56 @@ namespace SwordMetroidbrainia
                     }
                 }
             }
+        }
+
+        private void CheckSpecialOverlaps()
+        {
+            var overlapCount = _collider2D.OverlapCollider(_triggerOverlapFilter, _overlapBuffer);
+            for (var i = 0; i < overlapCount; i++)
+            {
+                var other = _overlapBuffer[i];
+                if (other == null || other == _collider2D)
+                {
+                    continue;
+                }
+
+                if (other.TryGetComponent<SavePointMarker>(out var savePointMarker) && _respawnController != null)
+                {
+                    _respawnController.ActivateSavePoint(savePointMarker);
+                }
+
+                if (other.TryGetComponent<DeathCellMarker>(out _))
+                {
+                    KillPlayer();
+                    return;
+                }
+            }
+
+            overlapCount = _collider2D.OverlapCollider(_overlapFilter, _overlapBuffer);
+            for (var i = 0; i < overlapCount; i++)
+            {
+                var other = _overlapBuffer[i];
+                if (other == null || other == _collider2D)
+                {
+                    continue;
+                }
+
+                if (other.TryGetComponent<DeathCellMarker>(out _))
+                {
+                    KillPlayer();
+                    return;
+                }
+            }
+        }
+
+        private void KillPlayer()
+        {
+            if (_respawnController == null)
+            {
+                return;
+            }
+
+            _respawnController.KillPlayer();
         }
 
         private void SyncBodyPosition()
@@ -482,14 +726,23 @@ namespace SwordMetroidbrainia
                     new Keyframe(1f, 1f, 0f, 0f));
             }
 
-            if (recoil.vertical.curve == null)
+            if (recoil.verticalUpward.curve == null)
             {
-                // Vertical recoil uses a longer profile so the player can hang a little longer in the air.
-                recoil.vertical.curve = new AnimationCurve(
-                    new Keyframe(0f, 0f, 4f, 4f),
-                    new Keyframe(0.12f, 0.28f, 2.2f, 2.2f),
-                    new Keyframe(0.42f, 0.68f, 0.9f, 0.9f),
-                    new Keyframe(0.78f, 0.92f, 0.3f, 0.3f),
+                recoil.verticalUpward.curve = new AnimationCurve(
+                    new Keyframe(0f, 0f, 5f, 5f),
+                    new Keyframe(0.1f, 0.34f, 2.8f, 2.8f),
+                    new Keyframe(0.34f, 0.7f, 1.1f, 1.1f),
+                    new Keyframe(0.72f, 0.93f, 0.45f, 0.45f),
+                    new Keyframe(1f, 1f, 0f, 0f));
+            }
+
+            if (recoil.verticalDownward.curve == null)
+            {
+                recoil.verticalDownward.curve = new AnimationCurve(
+                    new Keyframe(0f, 0f, 5f, 5f),
+                    new Keyframe(0.1f, 0.34f, 2.8f, 2.8f),
+                    new Keyframe(0.34f, 0.7f, 1.1f, 1.1f),
+                    new Keyframe(0.72f, 0.93f, 0.45f, 0.45f),
                     new Keyframe(1f, 1f, 0f, 0f));
             }
         }
@@ -543,7 +796,18 @@ namespace SwordMetroidbrainia
 
         private bool ShouldIgnoreCollision(Collider2D otherCollider, Vector2 castDirection)
         {
-            if (otherCollider == null || !otherCollider.TryGetComponent<OneWayPlatformMarker>(out _))
+            if (otherCollider == null)
+            {
+                return false;
+            }
+
+            if (otherCollider.TryGetComponent<DeathCellMarker>(out _))
+            {
+                // Death zones should kill on touch, but they must never behave like solid ground or walls.
+                return true;
+            }
+
+            if (!otherCollider.TryGetComponent<OneWayPlatformMarker>(out _))
             {
                 return false;
             }

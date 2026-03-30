@@ -18,6 +18,8 @@ namespace SwordMetroidbrainia
         public Vector2 DigitalMove => new(GetDigitalAxis(Move.x), GetDigitalAxis(Move.y));
         public bool PrimaryAbilityTriggered => _primaryAbilityAction != null && _primaryAbilityAction.WasPressedThisFrame();
         public bool SecondaryAbilityTriggered => _secondaryAbilityAction != null && _secondaryAbilityAction.WasPressedThisFrame();
+        public bool SecondaryAbilityReleased => _secondaryAbilityAction != null && _secondaryAbilityAction.WasReleasedThisFrame();
+        public bool SecondaryAbilityHeld => _secondaryAbilityAction != null && _secondaryAbilityAction.IsPressed();
         public bool OpenMapTriggered => _openMapAction != null && _openMapAction.WasPressedThisFrame();
 
         private void Awake()

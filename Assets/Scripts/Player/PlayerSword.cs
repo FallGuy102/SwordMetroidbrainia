@@ -1,13 +1,17 @@
 using UnityEngine;
+using SwordMetroidbrainia.Map;
 
 namespace SwordMetroidbrainia
 {
     // Handles sword input, attack direction resolution, hit detection, and attack debug visualization.
     [RequireComponent(typeof(PlayerController2D))]
     [RequireComponent(typeof(PlayerInputReader))]
-    public sealed class PlayerSword : MonoBehaviour
+    public sealed class PlayerSword : MonoBehaviour, IPlayerUnlockableAbility
     {
         private const int AttackBufferSize = 8;
+
+        [Header("Availability")]
+        [SerializeField] private bool startsUnlocked;
 
         [Header("Attack")]
         [SerializeField] private float attackRange = 0.5f;
@@ -29,11 +33,15 @@ namespace SwordMetroidbrainia
         private float _attackCooldownTimer;
         private float _activeDebugTimer;
         private LineRenderer _debugLineRenderer;
+        private bool _isUnlocked;
+
+        public bool IsUnlocked => _isUnlocked;
 
         private void Awake()
         {
             _controller = GetComponent<PlayerController2D>();
             _inputReader = GetComponent<PlayerInputReader>();
+            _isUnlocked = startsUnlocked;
             EnsureDebugLineRenderer();
         }
 
@@ -49,7 +57,7 @@ namespace SwordMetroidbrainia
                 _activeDebugTimer -= Time.deltaTime;
             }
 
-            if (_inputReader.PrimaryAbilityTriggered)
+            if (_isUnlocked && _inputReader.PrimaryAbilityTriggered)
             {
                 TryAttack();
             }
@@ -85,6 +93,21 @@ namespace SwordMetroidbrainia
             return _controller.CurrentPosition + GetAttackDirection() * attackRange;
         }
 
+        public void Unlock()
+        {
+            SetUnlocked(true);
+        }
+
+        public void Lock()
+        {
+            SetUnlocked(false);
+        }
+
+        public void SetUnlocked(bool unlocked)
+        {
+            _isUnlocked = unlocked;
+        }
+
         private void TryAttack()
         {
             if (_attackCooldownTimer > 0f)
@@ -111,10 +134,49 @@ namespace SwordMetroidbrainia
                     continue;
                 }
 
+                if (hit.TryGetComponent<OneWayPlatformMarker>(out var oneWayPlatform))
+                {
+                    if (!IsAttackValidForPlatformAxis(attackDirection, oneWayPlatform.Axis))
+                    {
+                        continue;
+                    }
+                }
+
+                if (hit.TryGetComponent<DeathCellMarker>(out _))
+                {
+                    continue;
+                }
+
+                if (hit.TryGetComponent<PlayerSpearStuckMarker>(out var stuckSpearMarker))
+                {
+                    if (!IsAttackValidForPlatformAxis(attackDirection, stuckSpearMarker.Axis))
+                    {
+                        continue;
+                    }
+
+                    if (stuckSpearMarker.TryBreakBySword())
+                    {
+                        _controller.ApplySwordRecoil(-attackDirection);
+                        return;
+                    }
+                }
+
                 // Sword hits are decoupled from recoil so the weapon can gain additional effects later.
                 _controller.ApplySwordRecoil(-attackDirection);
                 return;
             }
+        }
+
+        private static bool IsAttackValidForPlatformAxis(Vector2 attackDirection, OneWayPlatformMarker.PlatformAxis axis)
+        {
+            var isHorizontalAttack = Mathf.Abs(attackDirection.x) > 0.01f;
+            var isVerticalAttack = Mathf.Abs(attackDirection.y) > 0.01f;
+            return axis switch
+            {
+                OneWayPlatformMarker.PlatformAxis.Horizontal => isVerticalAttack,
+                OneWayPlatformMarker.PlatformAxis.Vertical => isHorizontalAttack,
+                _ => true
+            };
         }
 
         private void EnsureDebugLineRenderer()

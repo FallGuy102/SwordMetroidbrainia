@@ -19,3 +19,7 @@ MonoBehaviour:
     gridPosition: {x: 1, y: -1}
   - room: {fileID: 11400000, guid: dbcb48072a31e7f449ccb3243b58e933, type: 2}
     gridPosition: {x: 1, y: 0}
+  - room: {fileID: 11400000, guid: 1605b3e7234ebfa4693bbac0452ecdec, type: 2}
+    gridPosition: {x: 2, y: -1}
+  - room: {fileID: 11400000, guid: 5851d8ab8ff98214fb47bb1bbdae77f5, type: 2}
+    gridPosition: {x: 2, y: 0}

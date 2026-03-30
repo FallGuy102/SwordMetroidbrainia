@@ -15,6 +15,8 @@ GameObject:
   - component: {fileID: 283889070657888084}
   - component: {fileID: 7383052094301489192}
   - component: {fileID: 4062361321995618110}
+  - component: {fileID: 8627501477111389739}
+  - component: {fileID: 7292220985330690596}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -33,7 +35,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -2.58, y: -0.946, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -179,6 +181,7 @@ MonoBehaviour:
     gravity: 18
     maxFallSpeed: 8
     minimumGroundMoveDistance: 0.1
+    groundAlignmentStep: 0.1
   grounding:
     solidLayers:
       serializedVersion: 2
@@ -190,7 +193,7 @@ MonoBehaviour:
   collisionBoxOffset: {x: 0, y: 0}
   recoil:
     horizontal:
-      distance: 4
+      distance: 5.5
       duration: 0.4
       curve:
         serializedVersion: 2
@@ -217,8 +220,8 @@ MonoBehaviour:
         m_PostInfinity: 2
         m_RotationOrder: 4
       exitSpeed: 4
-    vertical:
-      distance: 4
+    verticalUpward:
+      distance: 5.5
       duration: 0.65
       curve:
         serializedVersion: 2
@@ -245,9 +248,39 @@ MonoBehaviour:
         m_PostInfinity: 2
         m_RotationOrder: 4
       exitSpeed: 0
+    verticalDownward:
+      distance: 5.5
+      duration: 0.4
+      curve:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 0
+          inSlope: 2
+          outSlope: 2
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 1
+          value: 1
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      exitSpeed: 4
     allowHorizontalMoveDuringVerticalRecoil: 1
     ignoreGravityDuringHorizontalRecoil: 1
     ignoreGravityDuringVerticalRecoil: 1
+  oneWayPassThroughDuration: 0.4
+  horizontalMomentumDecay: 16
 --- !u!114 &7383052094301489192
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -279,5 +312,46 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 00126503cfbd0fd41a8736f5bf3c27d5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &8627501477111389739
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4307774300233323392}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9feee8eef6b5fb44b81057dcb77d8322, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spawnOffset: 0.45
+  spearSpeed: 14
+  spearLength: 0.7
+  spearThickness: 0.14
+  throwCooldown: 0.08
+  maxFlightDuration: 3
+  exposedStuckLength: 1
+  holdThreshold: 0.18
+  bulletTimeScale: 0.15
+  pullAcceleration: 80
+  pullMaxSpeed: 18
+  pullStopDistance: 0.2
+  pullStartCooldown: 0.08
+  pullCancelCooldown: 0.08
+  brokenReturnDelay: 0.2
+  reachReturnDelay: 0.05
+  spearColor: {r: 0.82, g: 0.86, b: 0.95, a: 1}
+--- !u!114 &7292220985330690596
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4307774300233323392}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d3cf09658fcd754791ad1adadb34c4c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 

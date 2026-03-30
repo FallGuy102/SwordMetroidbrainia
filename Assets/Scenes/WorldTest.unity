@@ -219,6 +219,40 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &841391631 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4307774300233323392, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+  m_PrefabInstance: {fileID: 9133909140711576281}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &841391632
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 841391631}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9feee8eef6b5fb44b81057dcb77d8322, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spawnOffset: 0.45
+  spearSpeed: 14
+  spearLength: 0.7
+  spearThickness: 0.14
+  throwCooldown: 0.08
+  maxFlightDuration: 3
+  exposedStuckLength: 1
+  holdThreshold: 0.18
+  bulletTimeScale: 0.15
+  pullAcceleration: 80
+  pullMaxSpeed: 18
+  pullStopDistance: 0.2
+  pullStartCooldown: 0.08
+  pullCancelCooldown: 0.08
+  brokenReturnDelay: 0.2
+  reachReturnDelay: 0.05
+  spearColor: {r: 0.82, g: 0.86, b: 0.95, a: 1}
 --- !u!1 &1136293181
 GameObject:
   m_ObjectHideFlags: 0
@@ -254,7 +288,7 @@ MonoBehaviour:
   map: {fileID: 11400000, guid: e9db44276dd32dc4ca8193df4cfe1e57, type: 2}
   cellSize: 1
   roomAssetFolder: Assets/MapRooms
-  roomToPlace: {fileID: 11400000, guid: fc798b077f838e845aead583303947e7, type: 2}
+  roomToPlace: {fileID: 11400000, guid: dbcb48072a31e7f449ccb3243b58e933, type: 2}
 --- !u!4 &1136293183
 Transform:
   m_ObjectHideFlags: 0
@@ -331,6 +365,14 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: movement.gravity
+      value: 18
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: movement.maxFallSpeed
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
       propertyPath: recoil.vertical.distance
       value: 5.5
       objectReference: {fileID: 0}
@@ -341,6 +383,82 @@ PrefabInstance:
     - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
       propertyPath: recoil.horizontal.distance
       value: 5.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalUpward.distance
+      value: 5.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalUpward.duration
+      value: 0.65
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalUpward.exitSpeed
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalDownward.distance
+      value: 5.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalDownward.duration
+      value: 0.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalUpward.curve.m_Curve.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalDownward.curve.m_Curve.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalUpward.curve.m_Curve.Array.data[1].time
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalUpward.curve.m_Curve.Array.data[1].value
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalDownward.curve.m_Curve.Array.data[1].time
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalDownward.curve.m_Curve.Array.data[1].value
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalUpward.curve.m_Curve.Array.data[0].inSlope
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalUpward.curve.m_Curve.Array.data[1].inSlope
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalUpward.curve.m_Curve.Array.data[0].outSlope
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalUpward.curve.m_Curve.Array.data[1].outSlope
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalDownward.curve.m_Curve.Array.data[0].inSlope
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalDownward.curve.m_Curve.Array.data[1].inSlope
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalDownward.curve.m_Curve.Array.data[0].outSlope
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 283889070657888084, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      propertyPath: recoil.verticalDownward.curve.m_Curve.Array.data[1].outSlope
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4307774300233323392, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
       propertyPath: m_Name
@@ -405,7 +523,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4307774300233323392, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 841391632}
   m_SourcePrefab: {fileID: 100100000, guid: 9b9bddbe3298f494fa441547c4414271, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

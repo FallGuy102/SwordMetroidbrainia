@@ -20,6 +20,8 @@ namespace SwordMetroidbrainia.Editor.Map
                 KeyCode.Alpha2 => TryAssignBrush(RoomCellType.Wall, out brush),
                 KeyCode.Alpha3 => TryAssignBrush(RoomCellType.Ground, out brush),
                 KeyCode.Alpha4 => TryAssignBrush(RoomCellType.OneWayPlatform, out brush),
+                KeyCode.Alpha5 => TryAssignBrush(RoomCellType.Death, out brush),
+                KeyCode.Alpha6 => TryAssignBrush(RoomCellType.SavePoint, out brush),
                 _ => false
             };
 

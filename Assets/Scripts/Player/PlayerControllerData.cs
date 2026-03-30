@@ -60,7 +60,8 @@ namespace SwordMetroidbrainia
     public struct PlayerRecoilSettings
     {
         public RecoilProfile horizontal;
-        public RecoilProfile vertical;
+        public RecoilProfile verticalUpward;
+        public RecoilProfile verticalDownward;
         public bool allowHorizontalMoveDuringVerticalRecoil;
         public bool ignoreGravityDuringHorizontalRecoil;
         public bool ignoreGravityDuringVerticalRecoil;
@@ -69,7 +70,12 @@ namespace SwordMetroidbrainia
         {
             // Pure vertical recoil is tuned separately from horizontal recoil to match the intended game feel.
             var isVerticalRecoil = Mathf.Abs(recoilDirection.y) > 0.01f && Mathf.Abs(recoilDirection.x) < 0.01f;
-            return isVerticalRecoil ? vertical : horizontal;
+            if (!isVerticalRecoil)
+            {
+                return horizontal;
+            }
+
+            return recoilDirection.y > 0f ? verticalUpward : verticalDownward;
         }
 
         public bool IgnoresGravity(Vector2 recoilDirection)
@@ -92,7 +98,8 @@ namespace SwordMetroidbrainia
         public void Validate()
         {
             horizontal.Validate();
-            vertical.Validate();
+            verticalUpward.Validate();
+            verticalDownward.Validate();
         }
     }
 

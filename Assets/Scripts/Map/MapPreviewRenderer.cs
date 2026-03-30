@@ -17,6 +17,8 @@ namespace SwordMetroidbrainia.Map
         [SerializeField] private Color wallColor = new(0.22f, 0.22f, 0.22f, 1f);
         [SerializeField] private Color groundColor = new(0.56f, 0.36f, 0.18f, 1f);
         [SerializeField] private Color oneWayPlatformColor = new(0.82f, 0.52f, 0.2f, 1f);
+        [SerializeField] private Color deathCellColor = new(0.82f, 0.16f, 0.24f, 1f);
+        [SerializeField] private Color savePointColor = new(0.62f, 0.78f, 0.96f, 1f);
         [SerializeField] private int sortingOrder = -20;
         [SerializeField, Range(0f, 0.45f)] private float cellVisualInset = 0.06f;
         [SerializeField] private bool generateSolidColliders = true;
@@ -118,6 +120,18 @@ namespace SwordMetroidbrainia.Map
                         continue;
                     }
 
+                    if (type == RoomCellType.Death)
+                    {
+                        CreateDeathCell(roomPreviewRoot, roomOrigin, x, y);
+                        continue;
+                    }
+
+                    if (type == RoomCellType.SavePoint)
+                    {
+                        CreateSavePointCell(roomPreviewRoot, roomOrigin, x, y);
+                        continue;
+                    }
+
                     var cellCenter = MapLayoutUtility.GetCellCenter(roomOrigin, x, y, _root.CellSize);
                     var visualCellSize = GetFullCellVisualSize();
                     CreatePreviewQuad(
@@ -157,7 +171,46 @@ namespace SwordMetroidbrainia.Map
             var collider = cellObject.AddComponent<BoxCollider2D>();
             collider.size = Vector2.one;
             collider.offset = Vector2.zero;
-            cellObject.AddComponent<OneWayPlatformMarker>();
+            var marker = cellObject.AddComponent<OneWayPlatformMarker>();
+            marker.Axis = OneWayPlatformMarker.PlatformAxis.Horizontal;
+        }
+
+        private void CreateDeathCell(Transform parent, Vector2 roomOrigin, int cellX, int cellY)
+        {
+            var cellCenter = MapLayoutUtility.GetCellCenter(roomOrigin, cellX, cellY, _root.CellSize);
+            var visualCellSize = GetFullCellVisualSize();
+            var cellObject = CreatePreviewQuad(
+                parent,
+                $"Cell_{cellX}_{cellY}",
+                cellCenter,
+                visualCellSize,
+                deathCellColor);
+
+            var collider = cellObject.AddComponent<BoxCollider2D>();
+            collider.isTrigger = false;
+            collider.size = Vector2.one;
+            collider.offset = Vector2.zero;
+            cellObject.AddComponent<DeathCellMarker>();
+        }
+
+        private void CreateSavePointCell(Transform parent, Vector2 roomOrigin, int cellX, int cellY)
+        {
+            var cellCenter = MapLayoutUtility.GetCellCenter(roomOrigin, cellX, cellY, _root.CellSize);
+            var visualSize = Vector2.one * Mathf.Max(0.18f, _root.CellSize * 0.45f * GetVisualScale());
+            var cellObject = CreatePreviewQuad(
+                parent,
+                $"Cell_{cellX}_{cellY}",
+                cellCenter,
+                visualSize,
+                savePointColor);
+
+            var trigger = cellObject.AddComponent<BoxCollider2D>();
+            trigger.isTrigger = true;
+            trigger.size = new Vector2(
+                Mathf.Approximately(visualSize.x, 0f) ? 1f : (_root.CellSize * 0.55f) / visualSize.x,
+                Mathf.Approximately(visualSize.y, 0f) ? 1f : (_root.CellSize * 0.55f) / visualSize.y);
+            trigger.offset = Vector2.zero;
+            cellObject.AddComponent<SavePointMarker>();
         }
 
         private Transform CreateRoomPreviewRoot(MapRoomPlacement placement)
@@ -168,7 +221,7 @@ namespace SwordMetroidbrainia.Map
             return roomRoot.transform;
         }
 
-        private void CreatePreviewQuad(
+        private GameObject CreatePreviewQuad(
             Transform parent,
             string quadName,
             Vector2 localPosition,
@@ -204,6 +257,8 @@ namespace SwordMetroidbrainia.Map
                     previewObject.AddComponent<OneWayPlatformMarker>();
                 }
             }
+
+            return previewObject;
         }
 
         private Color GetCellColor(RoomCellType type)
@@ -213,13 +268,17 @@ namespace SwordMetroidbrainia.Map
                 RoomCellType.Wall => wallColor,
                 RoomCellType.Ground => groundColor,
                 RoomCellType.OneWayPlatform => oneWayPlatformColor,
+                RoomCellType.Death => deathCellColor,
+                RoomCellType.SavePoint => savePointColor,
                 _ => Color.clear
             };
         }
 
         private static bool IsSolid(RoomCellType type)
         {
-            return type == RoomCellType.Wall || type == RoomCellType.Ground || type == RoomCellType.OneWayPlatform;
+            return type == RoomCellType.Wall
+                || type == RoomCellType.Ground
+                || type == RoomCellType.OneWayPlatform;
         }
 
         private Vector2 GetFullCellVisualSize()
