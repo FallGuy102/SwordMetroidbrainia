@@ -12,15 +12,21 @@ namespace SwordMetroidbrainia
         private InputAction _primaryAbilityAction;
         private InputAction _secondaryAbilityAction;
         private InputAction _openMapAction;
+        private bool _gameplayInputEnabled = true;
 
-        public Vector2 Move => _moveAction?.ReadValue<Vector2>() ?? Vector2.zero;
+        public Vector2 Move => _gameplayInputEnabled ? _moveAction?.ReadValue<Vector2>() ?? Vector2.zero : Vector2.zero;
         // Converts both keyboard and analog stick input into a strict digital direction for precision movement.
         public Vector2 DigitalMove => new(GetDigitalAxis(Move.x), GetDigitalAxis(Move.y));
-        public bool PrimaryAbilityTriggered => _primaryAbilityAction != null && _primaryAbilityAction.WasPressedThisFrame();
-        public bool SecondaryAbilityTriggered => _secondaryAbilityAction != null && _secondaryAbilityAction.WasPressedThisFrame();
-        public bool SecondaryAbilityReleased => _secondaryAbilityAction != null && _secondaryAbilityAction.WasReleasedThisFrame();
-        public bool SecondaryAbilityHeld => _secondaryAbilityAction != null && _secondaryAbilityAction.IsPressed();
+        public bool PrimaryAbilityTriggered => _gameplayInputEnabled && _primaryAbilityAction != null && _primaryAbilityAction.WasPressedThisFrame();
+        public bool SecondaryAbilityTriggered => _gameplayInputEnabled && _secondaryAbilityAction != null && _secondaryAbilityAction.WasPressedThisFrame();
+        public bool SecondaryAbilityReleased => _gameplayInputEnabled && _secondaryAbilityAction != null && _secondaryAbilityAction.WasReleasedThisFrame();
+        public bool SecondaryAbilityHeld => _gameplayInputEnabled && _secondaryAbilityAction != null && _secondaryAbilityAction.IsPressed();
         public bool OpenMapTriggered => _openMapAction != null && _openMapAction.WasPressedThisFrame();
+
+        public void SetGameplayInputEnabled(bool enabled)
+        {
+            _gameplayInputEnabled = enabled;
+        }
 
         private void Awake()
         {

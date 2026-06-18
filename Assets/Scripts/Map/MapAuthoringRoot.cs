@@ -25,6 +25,11 @@ namespace SwordMetroidbrainia.Map
             set => roomToPlace = value;
         }
 
+        private void Awake()
+        {
+            EnsureRuntimeMapDisplay();
+        }
+
         public void RefreshPreview()
         {
             var previewRenderer = GetComponent<MapPreviewRenderer>();
@@ -32,6 +37,16 @@ namespace SwordMetroidbrainia.Map
             {
                 previewRenderer.Rebuild();
             }
+        }
+
+        private void EnsureRuntimeMapDisplay()
+        {
+            if (!Application.isPlaying || GetComponent<RuntimeMapDisplay>() != null)
+            {
+                return;
+            }
+
+            gameObject.AddComponent<RuntimeMapDisplay>();
         }
     }
 }
