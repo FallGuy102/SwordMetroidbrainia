@@ -23,3 +23,11 @@ MonoBehaviour:
     gridPosition: {x: 2, y: -1}
   - room: {fileID: 11400000, guid: 5851d8ab8ff98214fb47bb1bbdae77f5, type: 2}
     gridPosition: {x: 2, y: 0}
+  - room: {fileID: 11400000, guid: a92d6c5dede21474ba8915937bb59f70, type: 2}
+    gridPosition: {x: 0, y: 0}
+  - room: {fileID: 11400000, guid: 0359087b7d0946f44b650e5f5751a238, type: 2}
+    gridPosition: {x: -1, y: -1}
+  - room: {fileID: 11400000, guid: 03fac623094f1b143838018f59c6431f, type: 2}
+    gridPosition: {x: -1, y: -2}
+  - room: {fileID: 11400000, guid: 017eb8b55cacc6a4ca46c2ff7bd5aec4, type: 2}
+    gridPosition: {x: -2, y: -2}
