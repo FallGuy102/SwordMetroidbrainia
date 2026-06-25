@@ -449,7 +449,7 @@ namespace SwordMetroidbrainia.Map
             {
                 if (view?.Texture != null)
                 {
-                    DestroyObject(view.Texture);
+                    DestroyRuntimeObject(view.Texture);
                 }
             }
 
@@ -462,7 +462,7 @@ namespace SwordMetroidbrainia.Map
 
             for (var i = _roomRoot.childCount - 1; i >= 0; i--)
             {
-                DestroyObject(_roomRoot.GetChild(i).gameObject);
+                DestroyRuntimeObject(_roomRoot.GetChild(i).gameObject);
             }
         }
 
@@ -479,7 +479,7 @@ namespace SwordMetroidbrainia.Map
             }
         }
 
-        private static void DestroyObject(Object target)
+        private static void DestroyRuntimeObject(Object target)
         {
             if (target == null)
             {

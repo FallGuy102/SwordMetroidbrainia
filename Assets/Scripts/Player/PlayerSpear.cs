@@ -10,7 +10,6 @@ namespace SwordMetroidbrainia
         private enum SpearState
         {
             InHand,
-            Charging,
             Flying,
             Stuck,
             Pulling,
@@ -34,10 +33,6 @@ namespace SwordMetroidbrainia
         [SerializeField] private float maxFlightDuration = 3f;
         [SerializeField] private float exposedStuckLength = 1f;
 
-        [Header("Aim")]
-        [SerializeField] private float holdThreshold = 0.18f;
-        [SerializeField, Range(0.02f, 1f)] private float bulletTimeScale = 0.15f;
-
         [Header("Pull")]
         [SerializeField] private float pullAcceleration = 80f;
         [SerializeField] private float pullMaxSpeed = 18f;
@@ -55,13 +50,10 @@ namespace SwordMetroidbrainia
         private PlayerController2D _controller;
         private PlayerInputReader _inputReader;
         private SpearState _state = SpearState.InHand;
-        private float _defaultFixedDeltaTime;
 
         private float _actionCooldownTimer;
         private float _recoverTimer;
-        private float _holdTimer;
         private float _flightTimer;
-        private bool _secondaryHeldSequenceActive;
 
         private Vector2 _spearPosition;
         private Vector2 _spearDirection = Vector2.right;
@@ -79,20 +71,14 @@ namespace SwordMetroidbrainia
         {
             _controller = GetComponent<PlayerController2D>();
             _inputReader = GetComponent<PlayerInputReader>();
-            _defaultFixedDeltaTime = Time.fixedDeltaTime;
             _isUnlocked = startsUnlocked;
             EnsureVisual();
             SetVisualVisible(false);
         }
 
-        private void OnDisable()
-        {
-            ExitBulletTime();
-        }
-
         private void Update()
         {
-            TickTimers();
+            TickGameplayTimers(Time.deltaTime);
 
             if (!_isUnlocked)
             {
@@ -150,16 +136,16 @@ namespace SwordMetroidbrainia
             BreakSpear();
         }
 
-        private void TickTimers()
+        private void TickGameplayTimers(float deltaTime)
         {
             if (_actionCooldownTimer > 0f)
             {
-                _actionCooldownTimer = Mathf.Max(0f, _actionCooldownTimer - Time.unscaledDeltaTime);
+                _actionCooldownTimer = Mathf.Max(0f, _actionCooldownTimer - deltaTime);
             }
 
             if (_recoverTimer > 0f)
             {
-                _recoverTimer = Mathf.Max(0f, _recoverTimer - Time.unscaledDeltaTime);
+                _recoverTimer = Mathf.Max(0f, _recoverTimer - deltaTime);
             }
         }
 
@@ -168,7 +154,6 @@ namespace SwordMetroidbrainia
             switch (_state)
             {
                 case SpearState.InHand:
-                case SpearState.Charging:
                     UpdateReadyState();
                     break;
                 case SpearState.Flying:
@@ -188,50 +173,15 @@ namespace SwordMetroidbrainia
 
         private void UpdateReadyState()
         {
-            if (_actionCooldownTimer > 0f)
+            if (CanStartSpearAction() && _inputReader.SecondaryAbilityTriggered)
             {
-                return;
+                BeginThrow(ResolveAbilityDirection());
             }
-
-            if (_inputReader.SecondaryAbilityTriggered)
-            {
-                _secondaryHeldSequenceActive = true;
-                _holdTimer = 0f;
-            }
-
-            if (!_secondaryHeldSequenceActive)
-            {
-                return;
-            }
-
-            if (_inputReader.SecondaryAbilityHeld)
-            {
-                _holdTimer += Time.unscaledDeltaTime;
-                if (_state == SpearState.InHand && _holdTimer >= holdThreshold)
-                {
-                    BeginCharge();
-                }
-            }
-
-            if (!_inputReader.SecondaryAbilityReleased)
-            {
-                return;
-            }
-
-            FireChargedOrQuickThrow();
         }
 
-        private void BeginCharge()
+        private bool CanStartSpearAction()
         {
-            _state = SpearState.Charging;
-            EnterBulletTime();
-        }
-
-        private void FireChargedOrQuickThrow()
-        {
-            _secondaryHeldSequenceActive = false;
-            ExitBulletTime();
-            BeginThrow(ResolveAbilityDirection());
+            return _actionCooldownTimer <= 0f;
         }
 
         private void BeginThrow(Vector2 direction)
@@ -247,14 +197,15 @@ namespace SwordMetroidbrainia
 
         private void UpdateFlyingState()
         {
-            _flightTimer += Time.unscaledDeltaTime;
+            var deltaTime = Time.deltaTime;
+            _flightTimer += deltaTime;
             if (_flightTimer >= maxFlightDuration)
             {
                 BreakSpear();
                 return;
             }
 
-            var travelDistance = spearSpeed * Time.deltaTime;
+            var travelDistance = spearSpeed * deltaTime;
             if (travelDistance <= 0f)
             {
                 return;
@@ -311,30 +262,43 @@ namespace SwordMetroidbrainia
 
         private void UpdateStuckState()
         {
-            if (_actionCooldownTimer > 0f || !_inputReader.SecondaryAbilityTriggered)
+            if (!CanStartSpearAction() || !_inputReader.SecondaryAbilityTriggered)
             {
                 return;
             }
 
+            BeginPullToSpear();
+        }
+
+        private void UpdatePullingState()
+        {
+            if (CanStartSpearAction() && _inputReader.SecondaryAbilityTriggered)
+            {
+                CancelPullAndBreakSpear();
+                return;
+            }
+
+            if (_controller.ConsumePullEndReason(out var reason))
+            {
+                HandlePullEnded(reason);
+            }
+        }
+
+        private void BeginPullToSpear()
+        {
             _controller.BeginPull(_spearPosition, pullAcceleration, pullMaxSpeed, pullStopDistance);
             _state = SpearState.Pulling;
             _actionCooldownTimer = pullStartCooldown;
         }
 
-        private void UpdatePullingState()
+        private void CancelPullAndBreakSpear()
         {
-            if (_actionCooldownTimer <= 0f && _inputReader.SecondaryAbilityTriggered)
-            {
-                _controller.CancelPull(true);
-                BeginRecovery(brokenReturnDelay, pullCancelCooldown);
-                return;
-            }
+            _controller.CancelPull(true);
+            BeginRecovery(brokenReturnDelay, pullCancelCooldown);
+        }
 
-            if (!_controller.ConsumePullEndReason(out var reason))
-            {
-                return;
-            }
-
+        private void HandlePullEnded(PlayerController2D.PullEndReason reason)
+        {
             switch (reason)
             {
                 case PlayerController2D.PullEndReason.Blocked:
@@ -359,7 +323,6 @@ namespace SwordMetroidbrainia
 
         private void BeginRecovery(float returnDelay, float nextActionCooldown)
         {
-            ExitBulletTime();
             _state = SpearState.Recovering;
             _recoverTimer = returnDelay;
             _actionCooldownTimer = nextActionCooldown;
@@ -379,9 +342,6 @@ namespace SwordMetroidbrainia
 
         private void ForceResetToLockedState()
         {
-            ExitBulletTime();
-            _secondaryHeldSequenceActive = false;
-            _holdTimer = 0f;
             _flightTimer = 0f;
             _recoverTimer = 0f;
             _actionCooldownTimer = 0f;
@@ -488,23 +448,6 @@ namespace SwordMetroidbrainia
             return Mathf.Abs(direction.x) > Mathf.Abs(direction.y)
                 ? OneWayPlatformMarker.PlatformAxis.Horizontal
                 : OneWayPlatformMarker.PlatformAxis.Vertical;
-        }
-
-        private void EnterBulletTime()
-        {
-            Time.timeScale = bulletTimeScale;
-            Time.fixedDeltaTime = _defaultFixedDeltaTime * bulletTimeScale;
-        }
-
-        private void ExitBulletTime()
-        {
-            if (Mathf.Approximately(Time.timeScale, 1f) && Mathf.Approximately(Time.fixedDeltaTime, _defaultFixedDeltaTime))
-            {
-                return;
-            }
-
-            Time.timeScale = 1f;
-            Time.fixedDeltaTime = _defaultFixedDeltaTime;
         }
 
         private Sprite GetWhiteSprite()

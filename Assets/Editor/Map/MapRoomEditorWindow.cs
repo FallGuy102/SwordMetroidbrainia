@@ -7,24 +7,17 @@ namespace SwordMetroidbrainia.Editor.Map
     public sealed class MapRoomEditorWindow : EditorWindow
     {
         private const float GridPadding = 12f;
-        private const float GridPanelRatio = 0.58f;
         private const float MinGridPanelWidth = 420f;
         private const float MinWorldPanelWidth = 220f;
         private const float WorldPreviewPadding = 16f;
         private const int WorldOverviewRoomPadding = 2;
-
-        private enum WorldRegionTool
-        {
-            Select,
-            CreateNewRoom,
-            ReplaceWithActiveRoom,
-            DeleteRoom
-        }
+        private const int NeighborContextCells = 6;
+        private const float MinWorldPanelHeight = 180f;
 
         private MapRoomDefinition _room;
         private MapAuthoringRoot _mapRoot;
         private RoomCellType _brush = RoomCellType.Wall;
-        private WorldRegionTool _worldRegionTool = WorldRegionTool.Select;
+        private MapRoomEditorWorldRegionTool _worldRegionTool = MapRoomEditorWorldRegionTool.Select;
         private string _roomNameDraft = string.Empty;
 
         private bool _isPainting;
@@ -51,12 +44,20 @@ namespace SwordMetroidbrainia.Editor.Map
         private void OnEnable()
         {
             Selection.selectionChanged += OnSelectionChanged;
+            Undo.undoRedoPerformed += OnUndoRedoPerformed;
             TrySyncRoomFromSelection();
         }
 
         private void OnDisable()
         {
             Selection.selectionChanged -= OnSelectionChanged;
+            Undo.undoRedoPerformed -= OnUndoRedoPerformed;
+        }
+
+        private void OnUndoRedoPerformed()
+        {
+            RefreshAllMapPreviews();
+            Repaint();
         }
 
         private void OnSelectionChanged()
@@ -71,7 +72,7 @@ namespace SwordMetroidbrainia.Editor.Map
         {
             TrySyncRoomFromSelection();
 
-            HandleBrushShortcuts();
+            HandleBrushInput();
             DrawToolbar();
 
             if (_room == null)
@@ -83,11 +84,11 @@ namespace SwordMetroidbrainia.Editor.Map
             DrawBody();
         }
 
-        private void HandleBrushShortcuts()
+        private void HandleBrushInput()
         {
-            if (MapAuthoringBrushShortcutUtility.TryGetBrushShortcut(Event.current, out var shortcutBrush))
+            if (MapAuthoringBrushShortcutUtility.TryHandleBrushInput(Event.current, _brush, out var nextBrush))
             {
-                _brush = shortcutBrush;
+                _brush = nextBrush;
                 Repaint();
             }
         }
@@ -96,38 +97,53 @@ namespace SwordMetroidbrainia.Editor.Map
         {
             ResolveMapRootIfNeeded();
 
-            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+            var action = MapRoomEditorToolbarUtility.Draw(
+                _brush,
+                _worldRegionTool,
+                CanUseSelectedRoomAsTestEntrance(),
+                out _brush,
+                out _worldRegionTool);
+            HandleToolbarAction(action);
+        }
+
+        private void HandleToolbarAction(MapRoomEditorToolbarAction action)
+        {
+            switch (action)
             {
-                _brush = (RoomCellType)EditorGUILayout.EnumPopup("Brush", _brush);
-                _worldRegionTool = (WorldRegionTool)GUILayout.Toolbar(
-                    (int)_worldRegionTool,
-                    new[] { "Select", "New Room", "Replace", "Delete" });
+                case MapRoomEditorToolbarAction.MovePlayerHere:
+                    MovePlayerToSelectedRoom(false);
+                    break;
+                case MapRoomEditorToolbarAction.PlayHere:
+                    MovePlayerToSelectedRoom(true);
+                    break;
             }
         }
 
         private void DrawBody()
         {
-            EditorGUILayout.Space(6f);
-
-            using (new EditorGUILayout.HorizontalScope())
+            var bodyRect = GUILayoutUtility.GetRect(1f, 1f, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
+            if (!MapRoomEditorLayoutUtility.TryGetMainLayout(bodyRect, MinGridPanelWidth, MinWorldPanelWidth, MinWorldPanelHeight, out var layout))
             {
-                var gridPanelWidth = Mathf.Clamp(position.width * GridPanelRatio, MinGridPanelWidth, position.width - MinWorldPanelWidth);
-                DrawGridPanel(gridPanelWidth);
-                GUILayout.Space(10f);
-                DrawWorldOverviewPanel();
+                return;
             }
+
+            DrawGridPanel(layout.GridRect);
+            DrawWorldOverviewPanel(layout.WorldRect);
+            DrawStatusBar(layout.StatusRect);
         }
 
-        private void DrawGridPanel(float panelWidth)
+        private void DrawGridPanel(Rect panelRect)
         {
-            using (new EditorGUILayout.VerticalScope(GUILayout.Width(panelWidth)))
-            {
-                DrawRoomNameField();
-                DrawGrid(panelWidth);
-            }
+            GUI.Box(panelRect, GUIContent.none, EditorStyles.helpBox);
+            var contentRect = MapRoomEditorLayoutUtility.InsetRect(panelRect, MapRoomEditorLayoutUtility.PanelInset);
+            var headerRect = new Rect(contentRect.x, contentRect.y, contentRect.width, MapRoomEditorLayoutUtility.HeaderHeight);
+            var gridRect = new Rect(contentRect.x, headerRect.yMax + MapRoomEditorLayoutUtility.PanelGap, contentRect.width, Mathf.Max(1f, contentRect.yMax - headerRect.yMax - MapRoomEditorLayoutUtility.PanelGap));
+
+            DrawRoomHeader(headerRect);
+            DrawGrid(gridRect);
         }
 
-        private void DrawRoomNameField()
+        private void DrawRoomHeader(Rect headerRect)
         {
             if (_room == null)
             {
@@ -139,7 +155,14 @@ namespace SwordMetroidbrainia.Editor.Map
                 _roomNameDraft = _room.DisplayName;
             }
 
-            var nextDraft = EditorGUILayout.TextField("Room Name", _roomNameDraft);
+            var labelRect = new Rect(headerRect.x, headerRect.y + 2f, 42f, EditorGUIUtility.singleLineHeight);
+            var fieldWidth = Mathf.Clamp(headerRect.width * 0.34f, 120f, 360f);
+            var fieldRect = new Rect(labelRect.xMax + 6f, headerRect.y + 1f, Mathf.Min(fieldWidth, Mathf.Max(80f, headerRect.width - labelRect.width - 18f)), EditorGUIUtility.singleLineHeight);
+            var infoRect = new Rect(fieldRect.xMax + 10f, headerRect.y + 2f, Mathf.Max(1f, headerRect.xMax - fieldRect.xMax - 10f), EditorGUIUtility.singleLineHeight);
+
+            EditorGUI.LabelField(labelRect, "Room", EditorStyles.boldLabel);
+            var nextDraft = EditorGUI.TextField(fieldRect, _roomNameDraft);
+            EditorGUI.LabelField(infoRect, "center room is editable, neighbors are reference only", EditorStyles.miniLabel);
             if (nextDraft == _roomNameDraft)
             {
                 return;
@@ -147,6 +170,7 @@ namespace SwordMetroidbrainia.Editor.Map
 
             _roomNameDraft = nextDraft;
 
+            Undo.RecordObject(_room, "Rename Room");
             var serializedRoom = new SerializedObject(_room);
             serializedRoom.Update();
             serializedRoom.FindProperty("displayName").stringValue = _roomNameDraft;
@@ -154,78 +178,93 @@ namespace SwordMetroidbrainia.Editor.Map
             EditorUtility.SetDirty(_room);
         }
 
-        private void DrawGrid(float panelWidth)
+        private void DrawGrid(Rect availableRect)
         {
-            var availableWidth = Mathf.Max(200f, panelWidth - GridPadding * 2f - 8f);
+            var gridContext = CreateGridContext();
             var cellSize = Mathf.Clamp(
                 Mathf.Min(
-                    availableWidth / MapRoomDefinition.RoomWidth,
-                    (position.height - 220f) / MapRoomDefinition.RoomHeight),
-                20f,
+                    (availableRect.width - GridPadding * 2f) / gridContext.TotalColumns,
+                    (availableRect.height - GridPadding * 2f) / gridContext.TotalRows),
+                6f,
                 42f);
 
-            var gridWidth = MapRoomDefinition.RoomWidth * cellSize;
-            var gridHeight = MapRoomDefinition.RoomHeight * cellSize;
-            var gridRect = GUILayoutUtility.GetRect(gridWidth + GridPadding * 2f, gridHeight + GridPadding * 2f, GUILayout.ExpandWidth(false), GUILayout.ExpandHeight(false));
-            var contentRect = new Rect(gridRect.x + GridPadding, gridRect.y + GridPadding, gridWidth, gridHeight);
+            var gridWidth = gridContext.TotalColumns * cellSize;
+            var gridHeight = gridContext.TotalRows * cellSize;
+            var gridRect = new Rect(
+                availableRect.x + (availableRect.width - gridWidth) * 0.5f,
+                availableRect.y + (availableRect.height - gridHeight) * 0.5f,
+                gridWidth,
+                gridHeight);
+            var frameRect = new Rect(gridRect.x - GridPadding, gridRect.y - GridPadding, gridRect.width + GridPadding * 2f, gridRect.height + GridPadding * 2f);
 
-            EditorGUI.DrawRect(gridRect, new Color(0.1f, 0.12f, 0.12f, 1f));
-            EditorGUI.DrawRect(contentRect, MapRoomEditorTheme.GridBackgroundColor);
+            EditorGUI.DrawRect(frameRect, new Color(0.1f, 0.12f, 0.12f, 1f));
+            EditorGUI.DrawRect(gridRect, MapRoomEditorTheme.GridBackgroundColor);
 
-            DrawGridCells(contentRect, cellSize);
-            DrawGridLines(contentRect, cellSize);
-            HandleGridInput(contentRect, cellSize);
+            DrawGridCells(gridRect, cellSize, gridContext);
+            DrawGridLines(gridRect, cellSize, gridContext);
+            HandleGridInput(gridRect, cellSize, gridContext.ContextMargin);
         }
 
-        private void DrawGridCells(Rect contentRect, float cellSize)
+        private void DrawGridCells(Rect contentRect, float cellSize, MapRoomEditorGridContext gridContext)
         {
-            for (var displayRow = 0; displayRow < MapRoomDefinition.RoomHeight; displayRow++)
+            var currentRoomRect = MapRoomEditorGridGeometry.GetCurrentRoomRect(contentRect, cellSize, gridContext.ContextMargin);
+            EditorGUI.DrawRect(currentRoomRect, new Color(0.18f, 0.23f, 0.24f, 0.42f));
+
+            for (var contextY = -gridContext.ContextMargin; contextY < MapRoomDefinition.RoomHeight + gridContext.ContextMargin; contextY++)
             {
-                for (var x = 0; x < MapRoomDefinition.RoomWidth; x++)
+                for (var contextX = -gridContext.ContextMargin; contextX < MapRoomDefinition.RoomWidth + gridContext.ContextMargin; contextX++)
                 {
-                    var roomY = MapRoomDefinition.RoomHeight - 1 - displayRow;
-                    var type = _room.GetCellType(x, roomY);
+                    if (!gridContext.TryGetCellType(contextX, contextY, out var type, out var isCurrentRoom))
+                    {
+                        continue;
+                    }
+
                     if (type == RoomCellType.Empty)
                     {
                         continue;
                     }
 
-                    EditorGUI.DrawRect(GetGridCellRect(contentRect, x, displayRow, cellSize), MapRoomEditorTheme.GetCellColor(type));
+                    var color = MapRoomEditorTheme.GetCellColor(type);
+                    if (!isCurrentRoom)
+                    {
+                        color = Color.Lerp(MapRoomEditorTheme.GridBackgroundColor, color, 0.45f);
+                    }
+
+                    EditorGUI.DrawRect(MapRoomEditorGridGeometry.GetContextCellRect(contentRect, contextX, contextY, cellSize, gridContext.ContextMargin, gridContext.TotalRows), color);
                 }
             }
 
-            if (TryGetGridCell(contentRect, Event.current.mousePosition, cellSize, out var hovered))
+            if (MapRoomEditorGridGeometry.TryGetEditableGridCell(contentRect, Event.current.mousePosition, cellSize, gridContext.ContextMargin, out var hovered))
             {
-                var displayRow = MapRoomDefinition.RoomHeight - 1 - hovered.y;
-                EditorGUI.DrawRect(GetGridCellRect(contentRect, hovered.x, displayRow, cellSize), MapRoomEditorTheme.HoverColor);
+                EditorGUI.DrawRect(MapRoomEditorGridGeometry.GetContextCellRect(contentRect, hovered.x, hovered.y, cellSize, gridContext.ContextMargin, gridContext.TotalRows), MapRoomEditorTheme.HoverColor);
             }
         }
 
-        private static void DrawGridLines(Rect contentRect, float cellSize)
+        private static void DrawGridLines(Rect contentRect, float cellSize, MapRoomEditorGridContext gridContext)
         {
             Handles.BeginGUI();
             Handles.color = MapRoomEditorTheme.GridLineColor;
 
-            for (var x = 0; x <= MapRoomDefinition.RoomWidth; x++)
+            for (var x = 0; x <= gridContext.TotalColumns; x++)
             {
                 var lineX = contentRect.x + x * cellSize;
                 Handles.DrawLine(new Vector3(lineX, contentRect.y), new Vector3(lineX, contentRect.yMax));
             }
 
-            for (var y = 0; y <= MapRoomDefinition.RoomHeight; y++)
+            for (var y = 0; y <= gridContext.TotalRows; y++)
             {
                 var lineY = contentRect.y + y * cellSize;
                 Handles.DrawLine(new Vector3(contentRect.x, lineY), new Vector3(contentRect.xMax, lineY));
             }
 
             Handles.color = MapRoomEditorTheme.MajorGridLineColor;
-            for (var x = 0; x <= MapRoomDefinition.RoomWidth; x += 5)
+            for (var x = 0; x <= gridContext.TotalColumns; x += 5)
             {
                 var lineX = contentRect.x + x * cellSize;
                 Handles.DrawAAPolyLine(1.6f, new Vector3(lineX, contentRect.y), new Vector3(lineX, contentRect.yMax));
             }
 
-            for (var y = 0; y <= MapRoomDefinition.RoomHeight; y += 5)
+            for (var y = 0; y <= gridContext.TotalRows; y += 5)
             {
                 var lineY = contentRect.y + y * cellSize;
                 Handles.DrawAAPolyLine(1.6f, new Vector3(contentRect.x, lineY), new Vector3(contentRect.xMax, lineY));
@@ -239,10 +278,20 @@ namespace SwordMetroidbrainia.Editor.Map
                 new Vector3(contentRect.xMax, contentRect.yMax),
                 new Vector3(contentRect.x, contentRect.yMax),
                 new Vector3(contentRect.x, contentRect.y));
+
+            var currentRoomRect = MapRoomEditorGridGeometry.GetCurrentRoomRect(contentRect, cellSize, gridContext.ContextMargin);
+            Handles.color = new Color(1f, 0.98f, 0.76f, 0.95f);
+            Handles.DrawAAPolyLine(
+                2.5f,
+                new Vector3(currentRoomRect.x, currentRoomRect.y),
+                new Vector3(currentRoomRect.xMax, currentRoomRect.y),
+                new Vector3(currentRoomRect.xMax, currentRoomRect.yMax),
+                new Vector3(currentRoomRect.x, currentRoomRect.yMax),
+                new Vector3(currentRoomRect.x, currentRoomRect.y));
             Handles.EndGUI();
         }
 
-        private void HandleGridInput(Rect contentRect, float cellSize)
+        private void HandleGridInput(Rect contentRect, float cellSize, int contextMargin)
         {
             var currentEvent = Event.current;
             if (_room == null)
@@ -256,7 +305,7 @@ namespace SwordMetroidbrainia.Editor.Map
                 return;
             }
 
-            if ((currentEvent.type != EventType.MouseDown && currentEvent.type != EventType.MouseDrag) || !contentRect.Contains(currentEvent.mousePosition))
+            if ((currentEvent.type != EventType.MouseDown && currentEvent.type != EventType.MouseDrag) || !MapRoomEditorGridGeometry.GetCurrentRoomRect(contentRect, cellSize, contextMargin).Contains(currentEvent.mousePosition))
             {
                 return;
             }
@@ -266,7 +315,7 @@ namespace SwordMetroidbrainia.Editor.Map
                 return;
             }
 
-            if (!TryGetGridCell(contentRect, currentEvent.mousePosition, cellSize, out var cell))
+            if (!MapRoomEditorGridGeometry.TryGetEditableGridCell(contentRect, currentEvent.mousePosition, cellSize, contextMargin, out var cell))
             {
                 return;
             }
@@ -304,15 +353,28 @@ namespace SwordMetroidbrainia.Editor.Map
             _lastPaintedCell = new Vector2Int(-1, -1);
         }
 
-        private void DrawWorldOverviewPanel()
+        private void DrawWorldOverviewPanel(Rect panelRect)
         {
-            using (new EditorGUILayout.VerticalScope())
-            {
-                EditorGUILayout.LabelField("World Overview", EditorStyles.boldLabel);
-                var overviewRect = GUILayoutUtility.GetRect(200f, 10f, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
-                DrawWorldOverview(overviewRect);
-            }
+            GUI.Box(panelRect, GUIContent.none, EditorStyles.helpBox);
+            var contentRect = MapRoomEditorLayoutUtility.InsetRect(panelRect, MapRoomEditorLayoutUtility.PanelInset);
+            var headerRect = new Rect(contentRect.x, contentRect.y + 2f, contentRect.width, EditorGUIUtility.singleLineHeight);
+            var overviewRect = new Rect(contentRect.x, headerRect.yMax + MapRoomEditorLayoutUtility.PanelGap, contentRect.width, Mathf.Max(1f, contentRect.yMax - headerRect.yMax - MapRoomEditorLayoutUtility.PanelGap));
+
+            EditorGUI.LabelField(headerRect, "World Overview", EditorStyles.boldLabel);
+            DrawWorldOverview(overviewRect);
         }
+
+        private void DrawStatusBar(Rect statusRect)
+        {
+            EditorGUI.DrawRect(statusRect, new Color(0.11f, 0.12f, 0.13f, 1f));
+            DrawOutline(statusRect, new Color(1f, 1f, 1f, 0.12f));
+
+            var roomName = _room != null ? _room.DisplayName : "No Room";
+            var status = $"Room: {roomName}    Brush: {_brush}    World Tool: {_worldRegionTool}    1-7 brush shortcuts, left paint, right erase";
+            var labelRect = new Rect(statusRect.x + 8f, statusRect.y + 3f, statusRect.width - 16f, EditorGUIUtility.singleLineHeight);
+            EditorGUI.LabelField(labelRect, status, EditorStyles.miniLabel);
+        }
+
 
         private void DrawWorldOverview(Rect overviewRect)
         {
@@ -446,16 +508,16 @@ namespace SwordMetroidbrainia.Editor.Map
 
             switch (_worldRegionTool)
             {
-                case WorldRegionTool.Select:
+                case MapRoomEditorWorldRegionTool.Select:
                     SelectWorldRegion(map, roomGridPosition);
                     break;
-                case WorldRegionTool.CreateNewRoom:
+                case MapRoomEditorWorldRegionTool.CreateNewRoom:
                     CreateRoomInRegion(map, roomGridPosition);
                     break;
-                case WorldRegionTool.ReplaceWithActiveRoom:
+                case MapRoomEditorWorldRegionTool.ReplaceWithActiveRoom:
                     ReplaceRoomInRegion(map, roomGridPosition);
                     break;
-                case WorldRegionTool.DeleteRoom:
+                case MapRoomEditorWorldRegionTool.DeleteRoom:
                     DeleteRoomInRegion(map, roomGridPosition);
                     break;
             }
@@ -513,9 +575,13 @@ namespace SwordMetroidbrainia.Editor.Map
                 return;
             }
 
+            var undoGroup = Undo.GetCurrentGroup();
+            Undo.SetCurrentGroupName("Create Room In Region");
+
             var createdRoom = MapAuthoringAssetUtility.CreateRoomAsset(_mapRoot, $"Room_{roomGridPosition.x}_{roomGridPosition.y}");
             if (createdRoom == null)
             {
+                Undo.CollapseUndoOperations(undoGroup);
                 return;
             }
 
@@ -523,6 +589,7 @@ namespace SwordMetroidbrainia.Editor.Map
             var roomIndex = map.AddRoom(createdRoom, roomGridPosition);
             EditorUtility.SetDirty(map);
             SelectWorldRoom(roomIndex, createdRoom);
+            Undo.CollapseUndoOperations(undoGroup);
         }
 
         private void ReplaceRoomInRegion(MapDefinition map, Vector2Int roomGridPosition)
@@ -570,6 +637,24 @@ namespace SwordMetroidbrainia.Editor.Map
             {
                 _mapRoot.RefreshPreview();
             }
+        }
+
+        private bool CanUseSelectedRoomAsTestEntrance()
+        {
+            return _mapRoot != null
+                && _mapRoot.Map != null
+                && _room != null
+                && TryGetActiveRoomGridPosition(out _);
+        }
+
+        private void MovePlayerToSelectedRoom(bool enterPlayMode)
+        {
+            if (!TryGetActiveRoomGridPosition(out var roomGridPosition))
+            {
+                return;
+            }
+
+            MapRoomEditorTestEntranceUtility.TryMovePlayerToRoom(_mapRoot, _room, roomGridPosition, enterPlayMode);
         }
 
         private bool TrySyncRoomFromSelection()
@@ -686,31 +771,50 @@ namespace SwordMetroidbrainia.Editor.Map
             return map.IsValidRoomIndex(fallbackIndex) ? fallbackIndex : -1;
         }
 
-        private static Rect GetGridCellRect(Rect contentRect, int x, int displayRow, float cellSize)
+        private MapRoomEditorGridContext CreateGridContext()
         {
-            return new Rect(contentRect.x + x * cellSize, contentRect.y + displayRow * cellSize, cellSize, cellSize);
+            var hasWorldContext = TryGetActiveRoomGridPosition(out var activeRoomGridPosition);
+            return new MapRoomEditorGridContext(
+                _mapRoot != null ? _mapRoot.Map : null,
+                _room,
+                activeRoomGridPosition,
+                hasWorldContext ? NeighborContextCells : 0,
+                hasWorldContext);
         }
 
-        private static bool TryGetGridCell(Rect contentRect, Vector2 mousePosition, float cellSize, out Vector2Int cell)
+        private bool TryGetActiveRoomGridPosition(out Vector2Int gridPosition)
         {
-            if (!contentRect.Contains(mousePosition))
+            gridPosition = default;
+            var map = _mapRoot != null ? _mapRoot.Map : null;
+            if (map == null || _room == null)
             {
-                cell = default;
                 return false;
             }
 
-            var localX = Mathf.FloorToInt((mousePosition.x - contentRect.x) / cellSize);
-            var displayRow = Mathf.FloorToInt((mousePosition.y - contentRect.y) / cellSize);
-            var roomY = MapRoomDefinition.RoomHeight - 1 - displayRow;
-
-            if (localX < 0 || localX >= MapRoomDefinition.RoomWidth || roomY < 0 || roomY >= MapRoomDefinition.RoomHeight)
+            if (map.IsValidRoomIndex(_selectedPlacementIndex))
             {
-                cell = default;
-                return false;
+                var selectedPlacement = map.GetRoom(_selectedPlacementIndex);
+                if (selectedPlacement.room == _room)
+                {
+                    gridPosition = selectedPlacement.gridPosition;
+                    return true;
+                }
             }
 
-            cell = new Vector2Int(localX, roomY);
-            return true;
+            for (var i = 0; i < map.Rooms.Count; i++)
+            {
+                var placement = map.GetRoom(i);
+                if (placement.room != _room)
+                {
+                    continue;
+                }
+
+                _selectedPlacementIndex = i;
+                gridPosition = placement.gridPosition;
+                return true;
+            }
+
+            return false;
         }
 
         private static void DrawOutline(Rect rect, Color color)

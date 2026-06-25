@@ -165,6 +165,7 @@ namespace SwordMetroidbrainia.Map
                 RoomCellType.OneWayPlatform => new Color32(224, 174, 54, 255),
                 RoomCellType.Death => new Color32(208, 38, 58, 255),
                 RoomCellType.SavePoint => new Color32(94, 198, 245, 255),
+                RoomCellType.Breakable => new Color32(156, 104, 63, 255),
                 _ => new Color32(28, 43, 43, 255)
             };
         }

@@ -99,7 +99,7 @@ MonoBehaviour:
   - type: 2
   - type: 0
   - type: 0
-  - type: 0
+  - type: 5
   - type: 0
   - type: 0
   - type: 0
@@ -3064,9 +3064,9 @@ MonoBehaviour:
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281019164
+    rgba: 4294297182
   - serializedVersion: 2
-    rgba: 4281019164
+    rgba: 4294297182
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
@@ -3224,9 +3224,9 @@ MonoBehaviour:
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281019164
+    rgba: 4294297182
   - serializedVersion: 2
-    rgba: 4281019164
+    rgba: 4294297182
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2

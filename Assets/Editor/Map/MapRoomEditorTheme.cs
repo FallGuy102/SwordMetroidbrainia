@@ -14,6 +14,7 @@ namespace SwordMetroidbrainia.Editor.Map
         public static readonly Color OneWayPlatformColor = new(0.95f, 0.76f, 0.28f, 1f);
         public static readonly Color DeathColor = new(0.82f, 0.18f, 0.24f, 1f);
         public static readonly Color SavePointColor = new(0.6f, 0.8f, 0.96f, 1f);
+        public static readonly Color BreakableColor = new(0.48f, 0.28f, 0.14f, 1f);
         public static readonly Color HoverColor = new(1f, 1f, 1f, 0.1f);
 
         public static Color GetCellColor(RoomCellType type)
@@ -25,6 +26,7 @@ namespace SwordMetroidbrainia.Editor.Map
                 RoomCellType.OneWayPlatform => OneWayPlatformColor,
                 RoomCellType.Death => DeathColor,
                 RoomCellType.SavePoint => SavePointColor,
+                RoomCellType.Breakable => BreakableColor,
                 _ => Color.clear
             };
         }

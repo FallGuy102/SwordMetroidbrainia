@@ -11,6 +11,7 @@ namespace SwordMetroidbrainia
         private InputAction _moveAction;
         private InputAction _primaryAbilityAction;
         private InputAction _secondaryAbilityAction;
+        private InputAction _bulletTimeAction;
         private InputAction _openMapAction;
         private bool _gameplayInputEnabled = true;
 
@@ -21,6 +22,7 @@ namespace SwordMetroidbrainia
         public bool SecondaryAbilityTriggered => _gameplayInputEnabled && _secondaryAbilityAction != null && _secondaryAbilityAction.WasPressedThisFrame();
         public bool SecondaryAbilityReleased => _gameplayInputEnabled && _secondaryAbilityAction != null && _secondaryAbilityAction.WasReleasedThisFrame();
         public bool SecondaryAbilityHeld => _gameplayInputEnabled && _secondaryAbilityAction != null && _secondaryAbilityAction.IsPressed();
+        public bool BulletTimeHeld => _gameplayInputEnabled && _bulletTimeAction != null && _bulletTimeAction.IsPressed();
         public bool OpenMapTriggered => _openMapAction != null && _openMapAction.WasPressedThisFrame();
 
         public void SetGameplayInputEnabled(bool enabled)
@@ -30,6 +32,11 @@ namespace SwordMetroidbrainia
 
         private void Awake()
         {
+            if (GetComponent<PlayerBulletTime>() == null)
+            {
+                gameObject.AddComponent<PlayerBulletTime>();
+            }
+
             _moveAction = new InputAction(name: "Move", type: InputActionType.Value);
             // WASD and gamepad movement intentionally funnel into the same action so downstream code stays device-agnostic.
             _moveAction.AddCompositeBinding("2DVector")
@@ -49,6 +56,11 @@ namespace SwordMetroidbrainia
             _secondaryAbilityAction.AddBinding("<Mouse>/rightButton");
             _secondaryAbilityAction.AddBinding("<Gamepad>/buttonWest");
 
+            _bulletTimeAction = new InputAction(name: "BulletTime", type: InputActionType.Button);
+            _bulletTimeAction.AddBinding("<Keyboard>/leftCtrl");
+            _bulletTimeAction.AddBinding("<Keyboard>/rightCtrl");
+            _bulletTimeAction.AddBinding("<Gamepad>/rightTrigger");
+
             _openMapAction = new InputAction(name: "OpenMap", type: InputActionType.Button);
             _openMapAction.AddBinding("<Keyboard>/tab");
             _openMapAction.AddBinding("<Gamepad>/leftShoulder");
@@ -59,6 +71,7 @@ namespace SwordMetroidbrainia
             _moveAction?.Enable();
             _primaryAbilityAction?.Enable();
             _secondaryAbilityAction?.Enable();
+            _bulletTimeAction?.Enable();
             _openMapAction?.Enable();
         }
 
@@ -67,6 +80,7 @@ namespace SwordMetroidbrainia
             _moveAction?.Disable();
             _primaryAbilityAction?.Disable();
             _secondaryAbilityAction?.Disable();
+            _bulletTimeAction?.Disable();
             _openMapAction?.Disable();
         }
 
@@ -75,6 +89,7 @@ namespace SwordMetroidbrainia
             _moveAction?.Dispose();
             _primaryAbilityAction?.Dispose();
             _secondaryAbilityAction?.Dispose();
+            _bulletTimeAction?.Dispose();
             _openMapAction?.Dispose();
         }
 

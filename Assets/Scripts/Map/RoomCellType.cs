@@ -7,6 +7,7 @@ namespace SwordMetroidbrainia.Map
         Ground = 2,
         OneWayPlatform = 3,
         Death = 4,
-        SavePoint = 5
+        SavePoint = 5,
+        Breakable = 6
     }
 }

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: NewRoom
   m_EditorClassIdentifier: 
   roomId: newroom
-  displayName: 
+  displayName: Room_0_-1
   showOnMapWhenDiscovered: 0
   cells:
   - type: 0
@@ -126,8 +126,6 @@ MonoBehaviour:
   - type: 0
   - type: 0
   - type: 0
-  - type: 2
-  - type: 2
   - type: 0
   - type: 0
   - type: 0
@@ -148,7 +146,9 @@ MonoBehaviour:
   - type: 0
   - type: 0
   - type: 0
-  - type: 2
+  - type: 0
+  - type: 0
+  - type: 0
   - type: 0
   - type: 0
   - type: 0
@@ -3598,21 +3598,21 @@ MonoBehaviour:
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
@@ -3758,21 +3758,21 @@ MonoBehaviour:
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
@@ -3918,21 +3918,21 @@ MonoBehaviour:
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
@@ -4078,21 +4078,21 @@ MonoBehaviour:
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
@@ -4254,13 +4254,13 @@ MonoBehaviour:
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
@@ -4414,13 +4414,13 @@ MonoBehaviour:
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
@@ -4574,13 +4574,13 @@ MonoBehaviour:
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
@@ -4734,13 +4734,13 @@ MonoBehaviour:
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
-    rgba: 4281165990
+    rgba: 4281019164
   - serializedVersion: 2
     rgba: 4281019164
   - serializedVersion: 2

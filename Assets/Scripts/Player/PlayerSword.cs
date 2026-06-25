@@ -147,6 +147,17 @@ namespace SwordMetroidbrainia
                     continue;
                 }
 
+                if (hit.TryGetComponent<BreakableCellMarker>(out var breakableCell))
+                {
+                    if (breakableCell.TryBreakConnectedCells())
+                    {
+                        _controller.ApplySwordRecoil(-attackDirection);
+                        return;
+                    }
+
+                    continue;
+                }
+
                 if (hit.TryGetComponent<PlayerSpearStuckMarker>(out var stuckSpearMarker))
                 {
                     if (!IsAttackValidForPlatformAxis(attackDirection, stuckSpearMarker.Axis))

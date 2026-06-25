@@ -394,26 +394,57 @@ namespace SwordMetroidbrainia
         {
             var toTarget = _pullState.Target - _currentPosition;
             var distanceToTarget = toTarget.magnitude;
-            if (distanceToTarget <= _pullState.StopDistance)
+            if (HasReachedPullTarget(distanceToTarget))
             {
                 ForceStopPull(false, PullEndReason.ReachedTarget);
                 return;
             }
 
-            var direction = toTarget / Mathf.Max(distanceToTarget, 0.0001f);
-            _pullState.LastDirection = direction;
-            _pullState.CurrentSpeed = Mathf.Min(_pullState.MaxSpeed, _pullState.CurrentSpeed + _pullState.Acceleration * deltaTime);
-            var motion = direction * Mathf.Min(distanceToTarget, _pullState.CurrentSpeed * deltaTime);
+            var direction = GetPullDirection(toTarget, distanceToTarget);
+            var motion = GetPullMotion(direction, distanceToTarget, deltaTime);
 
-            MoveCharacter(motion, out var blockedX, out var blockedY);
-            if (blockedX || blockedY)
+            if (TryMovePull(motion))
             {
-                ForceStopPull(false, PullEndReason.Blocked);
                 return;
             }
 
-            SnapToGround();
+            // Pulling should stay on the grappling path. Ground snapping can bend that path,
+            // especially during bullet time where motion is evaluated in smaller steps.
             ResolveOverlaps();
+        }
+
+        private bool HasReachedPullTarget(float distanceToTarget)
+        {
+            return distanceToTarget <= _pullState.StopDistance;
+        }
+
+        private Vector2 GetPullDirection(Vector2 toTarget, float distanceToTarget)
+        {
+            var direction = toTarget / Mathf.Max(distanceToTarget, 0.0001f);
+            _pullState.LastDirection = direction;
+            return direction;
+        }
+
+        private Vector2 GetPullMotion(Vector2 direction, float distanceToTarget, float deltaTime)
+        {
+            _pullState.CurrentSpeed = Mathf.Min(
+                _pullState.MaxSpeed,
+                _pullState.CurrentSpeed + _pullState.Acceleration * deltaTime);
+
+            var travelDistance = Mathf.Min(distanceToTarget, _pullState.CurrentSpeed * deltaTime);
+            return direction * travelDistance;
+        }
+
+        private bool TryMovePull(Vector2 motion)
+        {
+            MoveCharacter(motion, out var blockedX, out var blockedY);
+            if (!blockedX && !blockedY)
+            {
+                return false;
+            }
+
+            ForceStopPull(false, PullEndReason.Blocked);
+            return true;
         }
 
         private void ForceStopPull(bool preserveVelocity, PullEndReason reason)

@@ -62,6 +62,7 @@ namespace SwordMetroidbrainia.Editor.Map
                 : AssetDatabase.GenerateUniqueAssetPath(requestedAssetPath);
             var room = ScriptableObject.CreateInstance<MapRoomDefinition>();
             AssetDatabase.CreateAsset(room, assetPath);
+            Undo.RegisterCreatedObjectUndo(room, "Create Room Asset");
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             return room;
